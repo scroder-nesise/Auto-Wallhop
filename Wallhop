@@ -1,0 +1,267 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local enabled = false
+local currentMode = 1
+
+local mode1_cooldown = 0.15
+local mode1_lastJump = 0
+
+local mode2_settings = {basePush = 53, cooldown = 0.33, snapDuration = 0.05, maxChain = 4}
+local mode2_lastJumpTime = 0
+local mode2_jumpChain = 0
+
+local sg = Instance.new("ScreenGui")
+sg.Name = "WallhopGUI"
+sg.Parent = game:GetService("CoreGui")
+sg.ResetOnSpawn = false
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 140, 0, 60)
+frame.Position = UDim2.new(0.5, -70, 0, 15)
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+frame.BackgroundTransparency = 0.6
+frame.BorderSizePixel = 0
+frame.Parent = sg
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(100, 180, 255)
+mainStroke.Thickness = 1.5
+mainStroke.Transparency = 0.35
+mainStroke.Parent = frame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(1, 0, 0, 32)
+toggleBtn.Position = UDim2.new(0, 0, 0, 0)
+toggleBtn.BackgroundTransparency = 1
+toggleBtn.Text = ""
+toggleBtn.Parent = frame
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(0.48, 0, 1, 0)
+label.Position = UDim2.new(0, 8, 0, 0)
+label.BackgroundTransparency = 1
+label.Text = "Wallhop:"
+label.TextColor3 = Color3.fromRGB(210, 210, 210)
+label.TextSize = 15
+label.Font = Enum.Font.SourceSansBold
+label.TextXAlignment = Enum.TextXAlignment.Left
+label.Parent = frame
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(0.48, 0, 1, 0)
+status.Position = UDim2.new(0.52, 0, 0, 0)
+status.BackgroundTransparency = 1
+status.Text = "OFF"
+status.TextColor3 = Color3.fromRGB(255, 70, 70)
+status.TextSize = 15
+status.Font = Enum.Font.SourceSansSemibold
+status.TextXAlignment = Enum.TextXAlignment.Right
+status.Parent = frame
+
+local mode1Frame = Instance.new("Frame")
+mode1Frame.Size = UDim2.new(0, 66, 0, 24)
+mode1Frame.Position = UDim2.new(0, 6, 0, 36)
+mode1Frame.BackgroundTransparency = 1
+mode1Frame.Parent = frame
+
+local mode1Stroke = Instance.new("UIStroke")
+mode1Stroke.Color = Color3.fromRGB(80, 255, 120)
+mode1Stroke.Thickness = 1.2
+mode1Stroke.Transparency = 0.3
+mode1Stroke.Parent = mode1Frame
+
+local mode1Label = Instance.new("TextLabel")
+mode1Label.Size = UDim2.new(1, 0, 1, 0)
+mode1Label.BackgroundTransparency = 1
+mode1Label.Text = "1: Inf Jump"
+mode1Label.TextColor3 = Color3.fromRGB(80, 255, 120)
+mode1Label.TextSize = 12
+mode1Label.Font = Enum.Font.SourceSansSemibold
+mode1Label.TextXAlignment = Enum.TextXAlignment.Left
+mode1Label.Parent = mode1Frame
+
+local mode2Frame = Instance.new("Frame")
+mode2Frame.Size = UDim2.new(0, 60, 0, 24)
+mode2Frame.Position = UDim2.new(0, 74, 0, 36)
+mode2Frame.BackgroundTransparency = 1
+mode2Frame.Parent = frame
+
+local mode2Stroke = Instance.new("UIStroke")
+mode2Stroke.Color = Color3.fromRGB(120, 120, 120)
+mode2Stroke.Thickness = 1.2
+mode2Stroke.Transparency = 0.3
+mode2Stroke.Parent = mode2Frame
+
+local mode2Label = Instance.new("TextLabel")
+mode2Label.Size = UDim2.new(1, 0, 1, 0)
+mode2Label.BackgroundTransparency = 1
+mode2Label.Text = "2: Cam Flick"
+mode2Label.TextColor3 = Color3.fromRGB(120, 120, 120)
+mode2Label.TextSize = 12
+mode2Label.Font = Enum.Font.SourceSansSemibold
+mode2Label.TextXAlignment = Enum.TextXAlignment.Left
+mode2Label.Parent = mode2Frame
+
+local activeColor = Color3.fromRGB(80, 255, 120)
+local inactiveColor = Color3.fromRGB(120, 120, 120)
+local offColor = Color3.fromRGB(255, 70, 70)
+local blueColor = Color3.fromRGB(100, 180, 255)
+
+local function updateModes()
+    mode1Stroke.Color = (currentMode == 1) and activeColor or inactiveColor
+    mode1Label.TextColor3 = (currentMode == 1) and activeColor or inactiveColor
+    mode2Stroke.Color = (currentMode == 2) and activeColor or inactiveColor
+    mode2Label.TextColor3 = (currentMode == 2) and activeColor or inactiveColor
+end
+
+local function toggleEnabled()
+    enabled = not enabled
+    if enabled then
+        status.Text = "ON"
+        status.TextColor3 = activeColor
+        mainStroke.Color = activeColor
+        mainStroke.Thickness = 1.8
+    else
+        status.Text = "OFF"
+        status.TextColor3 = offColor
+        mainStroke.Color = blueColor
+        mainStroke.Thickness = 1.5
+    end
+end
+
+toggleBtn.MouseButton1Click:Connect(toggleEnabled)
+
+mode1Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        currentMode = 1
+        updateModes()
+    end
+end)
+
+mode2Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        currentMode = 2
+        updateModes()
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        toggleEnabled()
+    end
+end)
+
+local function hasWall(root)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.FilterDescendantsInstances = {root.Parent}
+    local dirs = {
+        root.CFrame.RightVector * 5,
+        -root.CFrame.RightVector * 5,
+        root.CFrame.LookVector * 5,
+        -root.CFrame.LookVector * 5
+    }
+    for _, dir in ipairs(dirs) do
+        local result = Workspace:Raycast(root.Position + Vector3.new(0, -2, 0), dir, rayParams)
+        if result and result.Instance.CanCollide then return true end
+    end
+    return false
+end
+
+local function getContact(char, root)
+    local p = OverlapParams.new()
+    p.FilterDescendantsInstances = {char}
+    p.FilterType = Enum.RaycastFilterType.Exclude
+    local parts = Workspace:GetPartBoundsInBox(root.CFrame * CFrame.new(0, -1.5, 0), Vector3.new(3.2, 3.5, 3.2), p)
+    local unique, seen = 0, {}
+    for _, pt in pairs(parts) do
+        if pt.CanCollide and not seen[pt] then
+            seen[pt] = true
+            unique = unique + 1
+        end
+    end
+    return unique
+end
+
+-- Infinite Jump listener (always on when mode 1 + enabled)
+UserInputService.JumpRequest:Connect(function()
+    if not enabled or currentMode ~= 1 then return end
+    
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return end
+    
+    local now = tick()
+    if now - mode1_lastJump < mode1_cooldown then return end
+    
+    if not hasWall(root) then return end  -- Only boost near wall
+    
+    mode1_lastJump = now
+    
+    -- Force jump + velocity assist
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    local vel = root.AssemblyLinearVelocity
+    root.AssemblyLinearVelocity = Vector3.new(vel.X, 55 + math.random(-3, 4), vel.Z)  -- Stronger boost for chaining
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not enabled then return end
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return end
+
+    if currentMode == 2 then
+        -- Mode 2: Camera Flick (unchanged)
+        if hum.FloorMaterial ~= Enum.Material.Air then mode2_jumpChain = 0 end
+        if (UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump) and mode2_jumpChain < mode2_settings.maxChain then
+            local now = tick()
+            if (now - mode2_lastJumpTime) >= mode2_settings.cooldown then
+                if getContact(char, root) >= 2 then
+                    mode2_lastJumpTime = now
+                    mode2_jumpChain = mode2_jumpChain + 1
+                    local camera = Workspace.CurrentCamera
+                    local randomAngle = math.rad(90 + math.random(-4, 4))
+                    local oldCF = root.CFrame
+                    root.CFrame = oldCF * CFrame.Angles(0, randomAngle, 0)
+                    camera.CFrame = camera.CFrame * CFrame.Angles(0, randomAngle, 0)
+                    local power = mode2_settings.basePush - (mode2_jumpChain * 3.5)
+                    local vel = root.AssemblyLinearVelocity
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, power, vel.Z)
+                    task.delay(mode2_settings.snapDuration, function()
+                        if root and root.Parent then
+                            root.CFrame = oldCF
+                            camera.CFrame = camera.CFrame * CFrame.Angles(0, -randomAngle, 0)
+                        end
+                    end)
+                end
+            end
+        end
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    local char = player.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and not enabled then
+            hum.JumpPower = 50
+            hum.UseJumpPower = true
+        end
+    end
+end)
+
+updateModes()
