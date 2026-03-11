@@ -10,7 +10,7 @@ local currentMode = 1
 local mode1_cooldown = 0.15
 local mode1_lastJump = 0
 
-local mode2_settings = {basePush = 53, cooldown = 0.33, snapDuration = 0.05, maxChain = 4}
+local mode2_settings = {cooldown = 0.33, snapDuration = 0.05, maxChain = 4}  -- removed basePush since we no longer use decaying power
 local mode2_lastJumpTime = 0
 local mode2_jumpChain = 0
 
@@ -224,7 +224,7 @@ RunService.Heartbeat:Connect(function()
     if not hum or not root then return end
 
     if currentMode == 2 then
-        -- Mode 2: Camera Flick (unchanged)
+        -- Mode 2: Camera Flick (modified: normal/full jump power, no decay)
         if hum.FloorMaterial ~= Enum.Material.Air then mode2_jumpChain = 0 end
         if (UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump) and mode2_jumpChain < mode2_settings.maxChain then
             local now = tick()
@@ -237,9 +237,8 @@ RunService.Heartbeat:Connect(function()
                     local oldCF = root.CFrame
                     root.CFrame = oldCF * CFrame.Angles(0, randomAngle, 0)
                     camera.CFrame = camera.CFrame * CFrame.Angles(0, randomAngle, 0)
-                    local power = mode2_settings.basePush - (mode2_jumpChain * 3.5)
                     local vel = root.AssemblyLinearVelocity
-                    root.AssemblyLinearVelocity = Vector3.new(vel.X, power, vel.Z)
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 60, vel.Z)  -- <-- Changed: fixed normal jump power (no decay)
                     task.delay(mode2_settings.snapDuration, function()
                         if root and root.Parent then
                             root.CFrame = oldCF
