@@ -238,7 +238,7 @@ RunService.Heartbeat:Connect(function()
                     root.CFrame = oldCF * CFrame.Angles(0, randomAngle, 0)
                     camera.CFrame = camera.CFrame * CFrame.Angles(0, randomAngle, 0)
                     local vel = root.AssemblyLinearVelocity
-                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 50, vel.Z)  -- <-- Changed: fixed normal jump power (no decay)
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 65, vel.Z)  -- <-- Changed: fixed normal jump power (no decay)
                     task.delay(mode2_settings.snapDuration, function()
                         if root and root.Parent then
                             root.CFrame = oldCF
