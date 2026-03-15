@@ -10,7 +10,7 @@ local currentMode = 1
 local mode1_cooldown = 0.15
 local mode1_lastJump = 0
 
-local mode2_settings = {cooldown = 0.33, snapDuration = 0.05, maxChain = 4}  -- removed basePush since we no longer use decaying power
+local mode2_settings = {cooldown = 0.33, snapDuration = 0.05, maxChain = 4}
 local mode2_lastJumpTime = 0
 local mode2_jumpChain = 0
 
@@ -160,6 +160,53 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
+-- ── DRAGGABLE LOGIC ──
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function initDrag(input)
+    dragging = true
+    dragStart = input.Position
+    startPos = frame.Position
+    input.Changed:Connect(function()
+        if input.UserInputState == Enum.UserInputState.End then
+            dragging = false
+        end
+    end)
+end
+
+local function trackInput(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end
+
+for _, element in ipairs({frame, toggleBtn, mode1Frame, mode2Frame}) do
+    element.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            initDrag(input)
+        end
+    end)
+    element.InputChanged:Connect(function(input)
+        trackInput(input)
+    end)
+end
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+-- ── END DRAGGABLE ──
+
 local function hasWall(root)
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -192,27 +239,20 @@ local function getContact(char, root)
     return unique
 end
 
--- Infinite Jump listener (always on when mode 1 + enabled)
 UserInputService.JumpRequest:Connect(function()
     if not enabled or currentMode ~= 1 then return end
-    
     local char = player.Character
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart")
     if not hum or not root then return end
-    
     local now = tick()
     if now - mode1_lastJump < mode1_cooldown then return end
-    
-    if not hasWall(root) then return end  -- Only boost near wall
-    
+    if not hasWall(root) then return end
     mode1_lastJump = now
-    
-    -- Force jump + velocity assist
     hum:ChangeState(Enum.HumanoidStateType.Jumping)
     local vel = root.AssemblyLinearVelocity
-    root.AssemblyLinearVelocity = Vector3.new(vel.X, 55 + math.random(-3, 4), vel.Z)  -- Stronger boost for chaining
+    root.AssemblyLinearVelocity = Vector3.new(vel.X, 55 + math.random(-3, 4), vel.Z)
 end)
 
 RunService.Heartbeat:Connect(function()
@@ -224,7 +264,6 @@ RunService.Heartbeat:Connect(function()
     if not hum or not root then return end
 
     if currentMode == 2 then
-        -- Mode 2: Camera Flick (modified: normal/full jump power, no decay)
         if hum.FloorMaterial ~= Enum.Material.Air then mode2_jumpChain = 0 end
         if (UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump) and mode2_jumpChain < mode2_settings.maxChain then
             local now = tick()
@@ -238,7 +277,7 @@ RunService.Heartbeat:Connect(function()
                     root.CFrame = oldCF * CFrame.Angles(0, randomAngle, 0)
                     camera.CFrame = camera.CFrame * CFrame.Angles(0, randomAngle, 0)
                     local vel = root.AssemblyLinearVelocity
-                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 60, vel.Z)  -- <-- Changed: fixed normal jump power (no decay)
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 60, vel.Z)
                     task.delay(mode2_settings.snapDuration, function()
                         if root and root.Parent then
                             root.CFrame = oldCF
