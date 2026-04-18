@@ -1,305 +1,466 @@
-local Players = game:GetService("Players")
+-- =============================================
+--  WALLHOP V2.0
+--  Improved GUI | Direction-Aware Cam Flick
+-- =============================================
+
+local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+local RunService       = game:GetService("RunService")
+local TweenService     = game:GetService("TweenService")
+local Workspace        = game:GetService("Workspace")
 
-local player = Players.LocalPlayer
+local player  = Players.LocalPlayer
 local enabled = false
-local currentMode = 1
+local currentMode = 1  -- 1 = Inf Jump, 2 = Cam Flick
 
-local mode1_cooldown = 0.15
-local mode1_lastJump = 0
+-- Mode 1 settings
+local mode1_cooldown  = 0.15
+local mode1_lastJump  = 0
 
-local mode2_settings = {cooldown = 0.33, snapDuration = 0.05, maxChain = 4}
+-- Mode 2 settings
+local mode2 = {
+    cooldown     = 0.33,
+    snapDuration = 0.05,
+    maxChain     = 4,
+    flickAngle   = 45,   -- degrees; direction is auto-detected
+}
 local mode2_lastJumpTime = 0
-local mode2_jumpChain = 0
+local mode2_jumpChain    = 0
 
+-- =============================================
+--  COLOR PALETTE
+-- =============================================
+local C = {
+    BG       = Color3.fromRGB(10, 10, 14),
+    Panel    = Color3.fromRGB(16, 16, 22),
+    Surface  = Color3.fromRGB(22, 22, 32),
+    Border   = Color3.fromRGB(45, 45, 65),
+    Accent   = Color3.fromRGB(85, 170, 255),   -- blue idle
+    Green    = Color3.fromRGB(60, 230, 130),   -- active mode / ON
+    Red      = Color3.fromRGB(240, 70, 70),    -- OFF
+    TextMain = Color3.fromRGB(220, 220, 235),
+    TextSub  = Color3.fromRGB(120, 120, 145),
+    TextDim  = Color3.fromRGB(55, 55, 80),
+    Mode1    = Color3.fromRGB(60, 230, 130),   -- green
+    Mode2    = Color3.fromRGB(130, 100, 255),  -- purple
+}
+
+-- =============================================
+--  CLEANUP DUPLICATE GUIs
+-- =============================================
+if player.PlayerGui:FindFirstChild("WallhopGUI") then
+    player.PlayerGui.WallhopGUI:Destroy()
+end
+-- Also try CoreGui
+pcall(function()
+    if game:GetService("CoreGui"):FindFirstChild("WallhopGUI") then
+        game:GetService("CoreGui").WallhopGUI:Destroy()
+    end
+end)
+
+-- =============================================
+--  BUILD GUI
+-- =============================================
 local sg = Instance.new("ScreenGui")
-sg.Name = "WallhopGUI"
-sg.Parent = game:GetService("CoreGui")
-sg.ResetOnSpawn = false
+sg.Name          = "WallhopGUI"
+sg.ResetOnSpawn  = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Try CoreGui first, fall back to PlayerGui
+local ok = pcall(function() sg.Parent = game:GetService("CoreGui") end)
+if not ok then sg.Parent = player:WaitForChild("PlayerGui") end
 
+-- Main frame  (wider to fit both mode tabs)
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 140, 0, 60)
-frame.Position = UDim2.new(0.5, -70, 0, 15)
-frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-frame.BackgroundTransparency = 0.6
-frame.BorderSizePixel = 0
-frame.Parent = sg
+frame.Name              = "Main"
+frame.Size              = UDim2.new(0, 200, 0, 80)
+frame.Position          = UDim2.new(0.5, -100, 0, 18)
+frame.BackgroundColor3  = C.BG
+frame.BackgroundTransparency = 0.08
+frame.BorderSizePixel   = 0
+frame.ClipsDescendants  = true
+frame.Parent            = sg
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = frame
+local outerStroke = Instance.new("UIStroke", frame)
+outerStroke.Thickness       = 1.4
+outerStroke.Color           = C.Border
+outerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Color3.fromRGB(100, 180, 255)
-mainStroke.Thickness = 1.5
-mainStroke.Transparency = 0.35
-mainStroke.Parent = frame
+-- Subtle top accent line
+local accentBar = Instance.new("Frame")
+accentBar.Size             = UDim2.new(0.5, 0, 0, 2)
+accentBar.Position         = UDim2.new(0.25, 0, 0, 0)
+accentBar.BackgroundColor3 = C.Accent
+accentBar.BorderSizePixel  = 0
+accentBar.ZIndex           = 4
+accentBar.Parent           = frame
+Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
 
+-- ── Header row ──
+local header = Instance.new("Frame")
+header.Size             = UDim2.new(1, 0, 0, 34)
+header.BackgroundTransparency = 1
+header.Parent           = frame
+
+-- Clickable toggle covers the whole header
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(1, 0, 0, 32)
-toggleBtn.Position = UDim2.new(0, 0, 0, 0)
+toggleBtn.Size             = UDim2.new(1, 0, 1, 0)
 toggleBtn.BackgroundTransparency = 1
-toggleBtn.Text = ""
-toggleBtn.Parent = frame
+toggleBtn.Text             = ""
+toggleBtn.Parent           = header
 
-local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0.48, 0, 1, 0)
-label.Position = UDim2.new(0, 8, 0, 0)
-label.BackgroundTransparency = 1
-label.Text = "Wallhop:"
-label.TextColor3 = Color3.fromRGB(210, 210, 210)
-label.TextSize = 15
-label.Font = Enum.Font.SourceSansBold
-label.TextXAlignment = Enum.TextXAlignment.Left
-label.Parent = frame
+-- Title
+local titleLbl = Instance.new("TextLabel")
+titleLbl.Size              = UDim2.new(0.52, 0, 1, 0)
+titleLbl.Position          = UDim2.new(0, 12, 0, 0)
+titleLbl.BackgroundTransparency = 1
+titleLbl.Text              = "Wallhop"
+titleLbl.TextColor3        = C.TextMain
+titleLbl.TextSize          = 14
+titleLbl.Font              = Enum.Font.GothamBold
+titleLbl.TextXAlignment    = Enum.TextXAlignment.Left
+titleLbl.Parent            = header
 
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(0.48, 0, 1, 0)
-status.Position = UDim2.new(0.52, 0, 0, 0)
-status.BackgroundTransparency = 1
-status.Text = "OFF"
-status.TextColor3 = Color3.fromRGB(255, 70, 70)
-status.TextSize = 15
-status.Font = Enum.Font.SourceSansSemibold
-status.TextXAlignment = Enum.TextXAlignment.Right
-status.Parent = frame
+-- Status pill
+local pillBG = Instance.new("Frame")
+pillBG.Size               = UDim2.new(0, 48, 0, 20)
+pillBG.Position           = UDim2.new(1, -56, 0.5, -10)
+pillBG.BackgroundColor3   = C.Surface
+pillBG.BorderSizePixel    = 0
+pillBG.ZIndex             = 3
+pillBG.Parent             = header
+Instance.new("UICorner", pillBG).CornerRadius = UDim.new(1, 0)
 
-local mode1Frame = Instance.new("Frame")
-mode1Frame.Size = UDim2.new(0, 66, 0, 24)
-mode1Frame.Position = UDim2.new(0, 6, 0, 36)
-mode1Frame.BackgroundTransparency = 1
-mode1Frame.Parent = frame
+local statusDot = Instance.new("Frame")
+statusDot.Size            = UDim2.new(0, 6, 0, 6)
+statusDot.Position        = UDim2.new(0, 7, 0.5, -3)
+statusDot.BackgroundColor3 = C.Red
+statusDot.BorderSizePixel = 0
+statusDot.ZIndex          = 4
+statusDot.Parent          = pillBG
+Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
 
-local mode1Stroke = Instance.new("UIStroke")
-mode1Stroke.Color = Color3.fromRGB(80, 255, 120)
-mode1Stroke.Thickness = 1.2
-mode1Stroke.Transparency = 0.3
-mode1Stroke.Parent = mode1Frame
+local statusLbl = Instance.new("TextLabel")
+statusLbl.Size            = UDim2.new(1, -18, 1, 0)
+statusLbl.Position        = UDim2.new(0, 16, 0, 0)
+statusLbl.BackgroundTransparency = 1
+statusLbl.Text            = "OFF"
+statusLbl.TextColor3      = C.Red
+statusLbl.TextSize        = 11
+statusLbl.Font            = Enum.Font.GothamBold
+statusLbl.ZIndex          = 4
+statusLbl.Parent          = pillBG
 
-local mode1Label = Instance.new("TextLabel")
-mode1Label.Size = UDim2.new(1, 0, 1, 0)
-mode1Label.BackgroundTransparency = 1
-mode1Label.Text = "1: Inf Jump"
-mode1Label.TextColor3 = Color3.fromRGB(80, 255, 120)
-mode1Label.TextSize = 12
-mode1Label.Font = Enum.Font.SourceSansSemibold
-mode1Label.TextXAlignment = Enum.TextXAlignment.Left
-mode1Label.Parent = mode1Frame
+-- ── Mode tab row ──
+local tabRow = Instance.new("Frame")
+tabRow.Size              = UDim2.new(1, -16, 0, 28)
+tabRow.Position          = UDim2.new(0, 8, 0, 40)
+tabRow.BackgroundColor3  = C.Surface
+tabRow.BorderSizePixel   = 0
+tabRow.ClipsDescendants  = true
+tabRow.Parent            = frame
+Instance.new("UICorner", tabRow).CornerRadius = UDim.new(0, 7)
 
-local mode2Frame = Instance.new("Frame")
-mode2Frame.Size = UDim2.new(0, 60, 0, 24)
-mode2Frame.Position = UDim2.new(0, 74, 0, 36)
-mode2Frame.BackgroundTransparency = 1
-mode2Frame.Parent = frame
+-- Sliding active indicator
+local tabSlider = Instance.new("Frame")
+tabSlider.Size            = UDim2.new(0.5, -4, 1, -4)
+tabSlider.Position        = UDim2.new(0, 2, 0, 2)
+tabSlider.BackgroundColor3 = C.Mode1
+tabSlider.BackgroundTransparency = 0.75
+tabSlider.BorderSizePixel = 0
+tabSlider.ZIndex          = 1
+tabSlider.Parent          = tabRow
+Instance.new("UICorner", tabSlider).CornerRadius = UDim.new(0, 5)
 
-local mode2Stroke = Instance.new("UIStroke")
-mode2Stroke.Color = Color3.fromRGB(120, 120, 120)
-mode2Stroke.Thickness = 1.2
-mode2Stroke.Transparency = 0.3
-mode2Stroke.Parent = mode2Frame
+local function makeTab(text, xOffset, modeIdx)
+    local btn = Instance.new("TextButton")
+    btn.Size             = UDim2.new(0.5, -4, 1, -4)
+    btn.Position         = UDim2.new(xOffset, 2, 0, 2)
+    btn.BackgroundTransparency = 1
+    btn.Text             = text
+    btn.TextColor3       = modeIdx == 1 and C.Mode1 or C.TextDim
+    btn.TextSize         = 11
+    btn.Font             = Enum.Font.GothamBold
+    btn.ZIndex           = 2
+    btn.Parent           = tabRow
+    return btn
+end
 
-local mode2Label = Instance.new("TextLabel")
-mode2Label.Size = UDim2.new(1, 0, 1, 0)
-mode2Label.BackgroundTransparency = 1
-mode2Label.Text = "2: Cam Flick"
-mode2Label.TextColor3 = Color3.fromRGB(120, 120, 120)
-mode2Label.TextSize = 12
-mode2Label.Font = Enum.Font.SourceSansSemibold
-mode2Label.TextXAlignment = Enum.TextXAlignment.Left
-mode2Label.Parent = mode2Frame
+local tab1 = makeTab("Inf Jump", 0, 1)
+local tab2 = makeTab("Cam Flick", 0.5, 2)
 
-local activeColor = Color3.fromRGB(80, 255, 120)
-local inactiveColor = Color3.fromRGB(120, 120, 120)
-local offColor = Color3.fromRGB(255, 70, 70)
-local blueColor = Color3.fromRGB(100, 180, 255)
+-- ── Keybind hint ──
+local keyHint = Instance.new("TextLabel")
+keyHint.Size              = UDim2.new(1, -12, 0, 12)
+keyHint.Position          = UDim2.new(0, 6, 1, -14)
+keyHint.BackgroundTransparency = 1
+keyHint.Text              = "Toggle: [Insert]  •  Click tabs to switch mode"
+keyHint.TextColor3        = C.TextDim
+keyHint.TextSize          = 9
+keyHint.Font              = Enum.Font.Gotham
+keyHint.ZIndex            = 3
+keyHint.Parent            = frame
 
-local function updateModes()
-    mode1Stroke.Color = (currentMode == 1) and activeColor or inactiveColor
-    mode1Label.TextColor3 = (currentMode == 1) and activeColor or inactiveColor
-    mode2Stroke.Color = (currentMode == 2) and activeColor or inactiveColor
-    mode2Label.TextColor3 = (currentMode == 2) and activeColor or inactiveColor
+-- Resize frame to include hint
+frame.Size = UDim2.new(0, 210, 0, 88)
+keyHint.Position = UDim2.new(0, 6, 1, -14)
+
+-- =============================================
+--  GUI LOGIC
+-- =============================================
+local modeColors = {C.Mode1, C.Mode2}
+
+local function updateTabs()
+    local color = modeColors[currentMode]
+    -- Slide the indicator
+    TweenService:Create(tabSlider, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+        Position         = UDim2.new(currentMode == 1 and 0 or 0.5, 2, 0, 2),
+        BackgroundColor3 = color,
+    }):Play()
+    tab1.TextColor3 = currentMode == 1 and C.Mode1 or C.TextDim
+    tab2.TextColor3 = currentMode == 2 and C.Mode2 or C.TextDim
+end
+
+local function setEnabled(val)
+    enabled = val
+    local color = val and C.Green or C.Red
+    local txt   = val and "ON"  or "OFF"
+    TweenService:Create(statusLbl,  TweenInfo.new(0.15), {TextColor3 = color}):Play()
+    TweenService:Create(statusDot,  TweenInfo.new(0.15), {BackgroundColor3 = color}):Play()
+    TweenService:Create(accentBar,  TweenInfo.new(0.2),  {BackgroundColor3 = val and modeColors[currentMode] or C.Accent}):Play()
+    TweenService:Create(outerStroke,TweenInfo.new(0.2),  {Color = val and modeColors[currentMode] or C.Border}):Play()
+    statusLbl.Text = txt
 end
 
 local function toggleEnabled()
-    enabled = not enabled
-    if enabled then
-        status.Text = "ON"
-        status.TextColor3 = activeColor
-        mainStroke.Color = activeColor
-        mainStroke.Thickness = 1.8
-    else
-        status.Text = "OFF"
-        status.TextColor3 = offColor
-        mainStroke.Color = blueColor
-        mainStroke.Thickness = 1.5
-    end
+    setEnabled(not enabled)
 end
 
 toggleBtn.MouseButton1Click:Connect(toggleEnabled)
 
-mode1Frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentMode = 1
-        updateModes()
+tab1.MouseButton1Click:Connect(function()
+    currentMode = 1
+    updateTabs()
+    if enabled then
+        TweenService:Create(accentBar,   TweenInfo.new(0.2), {BackgroundColor3 = C.Mode1}):Play()
+        TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = C.Mode1}):Play()
     end
 end)
-
-mode2Frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentMode = 2
-        updateModes()
+tab2.MouseButton1Click:Connect(function()
+    currentMode = 2
+    updateTabs()
+    if enabled then
+        TweenService:Create(accentBar,   TweenInfo.new(0.2), {BackgroundColor3 = C.Mode2}):Play()
+        TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = C.Mode2}):Play()
     end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.Insert then
-        toggleEnabled()
-    end
+    if input.KeyCode == Enum.KeyCode.Insert then toggleEnabled() end
 end)
 
--- ── DRAGGABLE LOGIC ──
-local dragging = false
-local dragInput
-local dragStart
-local startPos
+-- =============================================
+--  DRAG  (threshold-based, covers all surfaces)
+--  Root cause of old bug: toggleBtn (TextButton)
+--  sits above header and swallows InputBegan,
+--  so header never fires. Fix: attach mousedown
+--  tracking to every element on the frame, then
+--  only commit to a drag after DRAG_THRESHOLD px
+--  of movement so normal clicks still fire.
+-- =============================================
+local DRAG_THRESHOLD = 4   -- pixels of movement before drag locks in
 
-local function initDrag(input)
-    dragging = true
-    dragStart = input.Position
-    startPos = frame.Position
-    input.Changed:Connect(function()
-        if input.UserInputState == Enum.UserInputState.End then
-            dragging = false
-        end
-    end)
-end
+local mouseDown  = false
+local dragging   = false
+local dragStart  = nil
+local startPos   = nil
 
-local function trackInput(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement
-    or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
+local function onPress(input)
+    local t = input.UserInputType
+    if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+        mouseDown = true
+        dragging  = false
+        dragStart = input.Position
+        startPos  = frame.Position
     end
 end
 
-for _, element in ipairs({frame, toggleBtn, mode1Frame, mode2Frame}) do
-    element.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-            initDrag(input)
-        end
-    end)
-    element.InputChanged:Connect(function(input)
-        trackInput(input)
-    end)
+-- Attach to every element that sits on top of the frame
+-- so no TextButton can shadow the event.
+local dragSurfaces = {frame, header, toggleBtn, tabRow, tab1, tab2, tabSlider, keyHint}
+for _, el in ipairs(dragSurfaces) do
+    el.InputBegan:Connect(onPress)
 end
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and input == dragInput then
-        local delta = input.Position - dragStart
+    local t = input.UserInputType
+    if not mouseDown then return end
+    if t ~= Enum.UserInputType.MouseMovement and t ~= Enum.UserInputType.Touch then return end
+
+    local delta = input.Position - dragStart
+
+    -- Commit to drag once threshold is exceeded
+    if not dragging and (math.abs(delta.X) > DRAG_THRESHOLD or math.abs(delta.Y) > DRAG_THRESHOLD) then
+        dragging = true
+    end
+
+    if dragging then
         frame.Position = UDim2.new(
             startPos.X.Scale, startPos.X.Offset + delta.X,
             startPos.Y.Scale, startPos.Y.Offset + delta.Y
         )
     end
 end)
--- ── END DRAGGABLE ──
 
+UserInputService.InputEnded:Connect(function(input)
+    local t = input.UserInputType
+    if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+        mouseDown = false
+        dragging  = false
+    end
+end)
+
+-- =============================================
+--  WALL DETECTION
+-- =============================================
 local function hasWall(root)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.FilterDescendantsInstances = {root.Parent}
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    rp.FilterDescendantsInstances = {root.Parent}
     local dirs = {
         root.CFrame.RightVector * 5,
         -root.CFrame.RightVector * 5,
         root.CFrame.LookVector * 5,
-        -root.CFrame.LookVector * 5
+        -root.CFrame.LookVector * 5,
     }
     for _, dir in ipairs(dirs) do
-        local result = Workspace:Raycast(root.Position + Vector3.new(0, -2, 0), dir, rayParams)
-        if result and result.Instance.CanCollide then return true end
+        local hit = Workspace:Raycast(root.Position + Vector3.new(0, -2, 0), dir, rp)
+        if hit and hit.Instance.CanCollide then return true end
     end
     return false
 end
 
 local function getContact(char, root)
-    local p = OverlapParams.new()
-    p.FilterDescendantsInstances = {char}
-    p.FilterType = Enum.RaycastFilterType.Exclude
-    local parts = Workspace:GetPartBoundsInBox(root.CFrame * CFrame.new(0, -1.5, 0), Vector3.new(3.2, 3.5, 3.2), p)
+    local op = OverlapParams.new()
+    op.FilterDescendantsInstances = {char}
+    op.FilterType = Enum.RaycastFilterType.Exclude
+    local parts  = Workspace:GetPartBoundsInBox(root.CFrame * CFrame.new(0, -1.5, 0), Vector3.new(3.2, 3.5, 3.2), op)
     local unique, seen = 0, {}
     for _, pt in pairs(parts) do
         if pt.CanCollide and not seen[pt] then
             seen[pt] = true
-            unique = unique + 1
+            unique += 1
         end
     end
     return unique
 end
 
+-- =============================================
+--  MOVEMENT DIRECTION HELPER
+--  Returns +1 (moving right), -1 (moving left), 0 (no horizontal)
+-- =============================================
+local function getHorizontalMoveDir()
+    local movingRight = UserInputService:IsKeyDown(Enum.KeyCode.D)
+        or UserInputService:IsKeyDown(Enum.KeyCode.Right)
+    local movingLeft  = UserInputService:IsKeyDown(Enum.KeyCode.A)
+        or UserInputService:IsKeyDown(Enum.KeyCode.Left)
+
+    if movingRight and not movingLeft then return  1 end
+    if movingLeft  and not movingRight then return -1 end
+    return 0   -- neutral / both held → default to right
+end
+
+-- =============================================
+--  MODE 1 — INFINITE JUMP (wall-triggered)
+-- =============================================
 UserInputService.JumpRequest:Connect(function()
     if not enabled or currentMode ~= 1 then return end
     local char = player.Character
     if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hum  = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart")
     if not hum or not root then return end
+
     local now = tick()
     if now - mode1_lastJump < mode1_cooldown then return end
     if not hasWall(root) then return end
+
     mode1_lastJump = now
     hum:ChangeState(Enum.HumanoidStateType.Jumping)
     local vel = root.AssemblyLinearVelocity
     root.AssemblyLinearVelocity = Vector3.new(vel.X, 55 + math.random(-3, 4), vel.Z)
 end)
 
+-- =============================================
+--  MODE 2 — CAM FLICK (direction-aware, 45°)
+-- =============================================
 RunService.Heartbeat:Connect(function()
-    if not enabled then return end
+    if not enabled or currentMode ~= 2 then return end
     local char = player.Character
     if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hum  = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart")
     if not hum or not root then return end
 
-    if currentMode == 2 then
-        if hum.FloorMaterial ~= Enum.Material.Air then mode2_jumpChain = 0 end
-        if (UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump) and mode2_jumpChain < mode2_settings.maxChain then
-            local now = tick()
-            if (now - mode2_lastJumpTime) >= mode2_settings.cooldown then
-                if getContact(char, root) >= 2 then
-                    mode2_lastJumpTime = now
-                    mode2_jumpChain = mode2_jumpChain + 1
-                    local camera = Workspace.CurrentCamera
-                    local randomAngle = math.rad(90 + math.random(-4, 4))
-                    local oldCF = root.CFrame
-                    root.CFrame = oldCF * CFrame.Angles(0, randomAngle, 0)
-                    camera.CFrame = camera.CFrame * CFrame.Angles(0, randomAngle, 0)
-                    local vel = root.AssemblyLinearVelocity
-                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 60, vel.Z)
-                    task.delay(mode2_settings.snapDuration, function()
-                        if root and root.Parent then
-                            root.CFrame = oldCF
-                            camera.CFrame = camera.CFrame * CFrame.Angles(0, -randomAngle, 0)
-                        end
-                    end)
-                end
-            end
-        end
+    -- Reset chain when grounded
+    if hum.FloorMaterial ~= Enum.Material.Air then
+        mode2_jumpChain = 0
     end
+
+    local jumping = UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump
+    if not jumping then return end
+    if mode2_jumpChain >= mode2.maxChain then return end
+
+    local now = tick()
+    if (now - mode2_lastJumpTime) < mode2.cooldown then return end
+    if getContact(char, root) < 2 then return end
+
+    mode2_lastJumpTime = now
+    mode2_jumpChain   += 1
+
+    -- ── DIRECTION-AWARE FLICK ──
+    local dir     = getHorizontalMoveDir()
+    -- dir ==  1 → moving right → flick right (+angle)
+    -- dir == -1 → moving left  → flick left  (-angle)
+    -- dir ==  0 → no input     → flick in camera facing direction (right)
+    local sign    = (dir == 0) and 1 or dir
+    local flickRad = math.rad(mode2.flickAngle * sign + math.random(-4, 4))
+
+    local camera  = Workspace.CurrentCamera
+    local oldRootCF = root.CFrame
+    local oldCamCF  = camera.CFrame
+
+    -- Apply flick
+    root.CFrame    = oldRootCF * CFrame.Angles(0, flickRad, 0)
+    camera.CFrame  = oldCamCF  * CFrame.Angles(0, flickRad, 0)
+
+    -- Boost vertical velocity
+    local vel = root.AssemblyLinearVelocity
+    root.AssemblyLinearVelocity = Vector3.new(vel.X, 60, vel.Z)
+
+    -- Snap back after duration
+    task.delay(mode2.snapDuration, function()
+        if root and root.Parent then
+            root.CFrame   = root.CFrame * CFrame.Angles(0, -flickRad, 0)
+            camera.CFrame = camera.CFrame * CFrame.Angles(0, -flickRad, 0)
+        end
+    end)
 end)
 
+-- =============================================
+--  AUTO-RESPAWN
+-- =============================================
 player.CharacterAdded:Connect(function()
     task.wait(1)
     local char = player.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum and not enabled then
-            hum.JumpPower = 50
-            hum.UseJumpPower = true
-        end
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum and not enabled then
+        hum.JumpPower    = 50
+        hum.UseJumpPower = true
     end
 end)
 
-updateModes()
+-- Init tabs visual
+updateTabs()
