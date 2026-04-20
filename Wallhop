@@ -198,7 +198,7 @@ titleLbl.Position = UDim2.new(0, 46, 0, 0)  -- shifted right because gear is on 
 
 titleLbl.BackgroundTransparency = 1
 
-titleLbl.Text = "Wallhop V2.1"
+titleLbl.Text = "Wallhop V2.2"
 
 titleLbl.TextColor3 = C.TextMain
 
