@@ -1,32 +1,32 @@
 -- =============================================
 
--- WALLHOP V2.2
+-- WALLHOP V2.3
 
 -- Minus (-) = ON/OFF
 
--- L-Ctrl = Infinite Jump Mode
+-- L-Ctrl    = Infinite Jump Mode
 
--- R-Shift = Cam Flick Mode
+-- R-Alt     = Cam Flick Mode
 
 -- =============================================
 
 
 
-local Players = game:GetService("Players")
+local Players          = game:GetService("Players")
 
 local UserInputService = game:GetService("UserInputService")
 
-local RunService = game:GetService("RunService")
+local RunService       = game:GetService("RunService")
 
-local TweenService = game:GetService("TweenService")
+local TweenService     = game:GetService("TweenService")
 
-local Workspace = game:GetService("Workspace")
+local Workspace        = game:GetService("Workspace")
 
 
 
-local player = Players.LocalPlayer
+local player      = Players.LocalPlayer
 
-local enabled = false
+local enabled     = false
 
 local currentMode = 1  -- 1 = Inf Jump, 2 = Cam Flick
 
@@ -36,25 +36,33 @@ local currentMode = 1  -- 1 = Inf Jump, 2 = Cam Flick
 
 local Settings = {
 
-    Mode1_Cooldown = 0.15,
+    Mode1_Cooldown  = 0.15,
 
-    Mode2_Cooldown = 0.33,
+    Mode2_Cooldown  = 0.33,
 
-    FlickAngle = 45,
+    FlickAngle      = 45,
 
-    MaxChain = 4,
+    MaxChain        = 4,
 
-    SnapDuration = 0.05,
+    SnapDuration    = 0.05,
+
+    -- New V2.3
+
+    FlickDirection  = "Random",   -- "Random" | "Left" | "Right"
+
+    SmoothFlick     = false,
+
+    SmoothDuration  = 0.08,       -- seconds the flick tween lasts
 
 }
 
 
 
-local mode1_lastJump = 0
+local mode1_lastJump     = 0
 
 local mode2_lastJumpTime = 0
 
-local mode2_jumpChain = 0
+local mode2_jumpChain    = 0
 
 
 
@@ -62,29 +70,29 @@ local mode2_jumpChain = 0
 
 local C = {
 
-    BG = Color3.fromRGB(10, 10, 14),
+    BG      = Color3.fromRGB(10,  10,  14),
 
-    Panel = Color3.fromRGB(16, 16, 22),
+    Panel   = Color3.fromRGB(16,  16,  22),
 
-    Surface = Color3.fromRGB(22, 22, 32),
+    Surface = Color3.fromRGB(22,  22,  32),
 
-    Border = Color3.fromRGB(45, 45, 65),
+    Border  = Color3.fromRGB(45,  45,  65),
 
-    Accent = Color3.fromRGB(85, 170, 255),
+    Accent  = Color3.fromRGB(85,  170, 255),
 
-    Green = Color3.fromRGB(60, 230, 130),
+    Green   = Color3.fromRGB(60,  230, 130),
 
-    Red = Color3.fromRGB(240, 70, 70),
+    Red     = Color3.fromRGB(240, 70,  70),
 
-    TextMain = Color3.fromRGB(220, 220, 235),
+    TextMain= Color3.fromRGB(220, 220, 235),
 
     TextSub = Color3.fromRGB(120, 120, 145),
 
-    TextDim = Color3.fromRGB(55, 55, 80),
+    TextDim = Color3.fromRGB(55,  55,  80),
 
-    Mode1 = Color3.fromRGB(60, 230, 130),
+    Mode1   = Color3.fromRGB(60,  230, 130),
 
-    Mode2 = Color3.fromRGB(130, 100, 255),
+    Mode2   = Color3.fromRGB(130, 100, 255),
 
 }
 
@@ -106,9 +114,9 @@ end
 
 local sg = Instance.new("ScreenGui")
 
-sg.Name = "WallhopGUI"
+sg.Name           = "WallhopGUI"
 
-sg.ResetOnSpawn = false
+sg.ResetOnSpawn   = false
 
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -118,23 +126,29 @@ if not sg.Parent then sg.Parent = player:WaitForChild("PlayerGui") end
 
 
 
+-- =============================================
+
+-- MAIN FRAME
+
+-- =============================================
+
 local frame = Instance.new("Frame")
 
-frame.Name = "Main"
+frame.Name             = "Main"
 
-frame.Size = UDim2.new(0, 180, 0, 72)
+frame.Size             = UDim2.new(0, 180, 0, 72)
 
-frame.Position = UDim2.new(0.5, -90, 0, 18)
+frame.Position         = UDim2.new(0.5, -90, 0, 18)
 
 frame.BackgroundColor3 = C.BG
 
 frame.BackgroundTransparency = 0.08
 
-frame.BorderSizePixel = 0
+frame.BorderSizePixel  = 0
 
 frame.ClipsDescendants = true
 
-frame.Parent = sg
+frame.Parent           = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
@@ -144,21 +158,21 @@ local outerStroke = Instance.new("UIStroke", frame)
 
 outerStroke.Thickness = 1.4
 
-outerStroke.Color = C.Border
+outerStroke.Color     = C.Border
 
 
 
 local accentBar = Instance.new("Frame")
 
-accentBar.Size = UDim2.new(0.5, 0, 0, 2)
+accentBar.Size             = UDim2.new(0.5, 0, 0, 2)
 
-accentBar.Position = UDim2.new(0.25, 0, 0, 0)
+accentBar.Position         = UDim2.new(0.25, 0, 0, 0)
 
 accentBar.BackgroundColor3 = C.Accent
 
-accentBar.ZIndex = 4
+accentBar.ZIndex           = 4
 
-accentBar.Parent = frame
+accentBar.Parent           = frame
 
 Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
 
@@ -168,85 +182,85 @@ Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
 
 local header = Instance.new("Frame")
 
-header.Size = UDim2.new(1, 0, 0, 30)
+header.Size                 = UDim2.new(1, 0, 0, 30)
 
 header.BackgroundTransparency = 1
 
-header.Parent = frame
+header.Parent               = frame
 
 
 
 local toggleBtn = Instance.new("TextButton")
 
-toggleBtn.Size = UDim2.new(1, -40, 1, 0)  -- space for gear on left
+toggleBtn.Size             = UDim2.new(1, -40, 1, 0)
 
-toggleBtn.Position = UDim2.new(0, 32, 0, 0)
+toggleBtn.Position         = UDim2.new(0, 32, 0, 0)
 
 toggleBtn.BackgroundTransparency = 1
 
-toggleBtn.Text = ""
+toggleBtn.Text             = ""
 
-toggleBtn.Parent = header
+toggleBtn.Parent           = header
 
 
 
 local titleLbl = Instance.new("TextLabel")
 
-titleLbl.Size = UDim2.new(0.52, 0, 1, 0)
+titleLbl.Size              = UDim2.new(0.52, 0, 1, 0)
 
-titleLbl.Position = UDim2.new(0, 46, 0, 0)  -- shifted right because gear is on left
+titleLbl.Position          = UDim2.new(0, 46, 0, 0)
 
 titleLbl.BackgroundTransparency = 1
 
-titleLbl.Text = "Wallhop V2.2"
+titleLbl.Text              = "Wallhop V2.3"
 
-titleLbl.TextColor3 = C.TextMain
+titleLbl.TextColor3        = C.TextMain
 
-titleLbl.TextSize = 14
+titleLbl.TextSize          = 14
 
-titleLbl.Font = Enum.Font.GothamBold
+titleLbl.Font              = Enum.Font.GothamBold
 
-titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+titleLbl.TextXAlignment    = Enum.TextXAlignment.Left
 
-titleLbl.Parent = header
+titleLbl.Parent            = header
 
 
 
--- Gear Button (Settings) - Moved to LEFT side
+-- Gear Button (left)
 
 local gearBtn = Instance.new("TextButton")
 
-gearBtn.Size = UDim2.new(0, 24, 0, 24)
+gearBtn.Size             = UDim2.new(0, 24, 0, 24)
 
-gearBtn.Position = UDim2.new(0, 8, 0.5, -12)
+gearBtn.Position         = UDim2.new(0, 8, 0.5, -12)
 
 gearBtn.BackgroundTransparency = 1
 
-gearBtn.Text = "⚙"
+gearBtn.Text             = "⚙"
 
-gearBtn.TextColor3 = C.TextSub
+gearBtn.TextColor3       = C.TextSub
 
-gearBtn.TextSize = 16
+gearBtn.TextSize         = 16
 
-gearBtn.Font = Enum.Font.GothamBold
+gearBtn.Font             = Enum.Font.GothamBold
 
-gearBtn.Parent = header
+gearBtn.Parent           = header
 
 
 
--- Status Pill (ON/OFF) - Still on right
+-- Status Pill (right)
 
 local pillBG = Instance.new("Frame")
 
-pillBG.Size = UDim2.new(0, 48, 0, 20)
+pillBG.Size             = UDim2.new(0, 48, 0, 20)
 
-pillBG.Position = UDim2.new(1, -56, 0.5, -10)
+pillBG.Position         = UDim2.new(1, -56, 0.5, -10)
 
 pillBG.BackgroundColor3 = C.Surface
 
-pillBG.ZIndex = 3
+pillBG.ZIndex           = 3
 
-pillBG.Parent = header
+pillBG.Parent           = header
 
 Instance.new("UICorner", pillBG).CornerRadius = UDim.new(1, 0)
 
@@ -254,15 +268,15 @@ Instance.new("UICorner", pillBG).CornerRadius = UDim.new(1, 0)
 
 local statusDot = Instance.new("Frame")
 
-statusDot.Size = UDim2.new(0, 6, 0, 6)
+statusDot.Size             = UDim2.new(0, 6, 0, 6)
 
-statusDot.Position = UDim2.new(0, 7, 0.5, -3)
+statusDot.Position         = UDim2.new(0, 7, 0.5, -3)
 
 statusDot.BackgroundColor3 = C.Red
 
-statusDot.ZIndex = 4
+statusDot.ZIndex           = 4
 
-statusDot.Parent = pillBG
+statusDot.Parent           = pillBG
 
 Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
 
@@ -270,23 +284,23 @@ Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
 
 local statusLbl = Instance.new("TextLabel")
 
-statusLbl.Size = UDim2.new(1, -18, 1, 0)
+statusLbl.Size              = UDim2.new(1, -18, 1, 0)
 
-statusLbl.Position = UDim2.new(0, 16, 0, 0)
+statusLbl.Position          = UDim2.new(0, 16, 0, 0)
 
 statusLbl.BackgroundTransparency = 1
 
-statusLbl.Text = "OFF"
+statusLbl.Text              = "OFF"
 
-statusLbl.TextColor3 = C.Red
+statusLbl.TextColor3        = C.Red
 
-statusLbl.TextSize = 11
+statusLbl.TextSize          = 11
 
-statusLbl.Font = Enum.Font.GothamBold
+statusLbl.Font              = Enum.Font.GothamBold
 
-statusLbl.ZIndex = 4
+statusLbl.ZIndex            = 4
 
-statusLbl.Parent = pillBG
+statusLbl.Parent            = pillBG
 
 
 
@@ -294,17 +308,17 @@ statusLbl.Parent = pillBG
 
 local tabRow = Instance.new("Frame")
 
-tabRow.Size = UDim2.new(1, -16, 0, 24)
+tabRow.Size             = UDim2.new(1, -16, 0, 24)
 
-tabRow.Position = UDim2.new(0.5, 0, 0, 32)
+tabRow.Position         = UDim2.new(0.5, 0, 0, 32)
 
-tabRow.AnchorPoint = Vector2.new(0.5, 0)
+tabRow.AnchorPoint      = Vector2.new(0.5, 0)
 
 tabRow.BackgroundColor3 = C.Surface
 
-tabRow.BorderSizePixel = 0
+tabRow.BorderSizePixel  = 0
 
-tabRow.Parent = frame
+tabRow.Parent           = frame
 
 Instance.new("UICorner", tabRow).CornerRadius = UDim.new(0, 7)
 
@@ -312,17 +326,17 @@ Instance.new("UICorner", tabRow).CornerRadius = UDim.new(0, 7)
 
 local tabSlider = Instance.new("Frame")
 
-tabSlider.Size = UDim2.new(0.5, -4, 1, -4)
+tabSlider.Size             = UDim2.new(0.5, -4, 1, -4)
 
-tabSlider.Position = UDim2.new(0, 2, 0, 2)
+tabSlider.Position         = UDim2.new(0, 2, 0, 2)
 
 tabSlider.BackgroundColor3 = C.Mode1
 
 tabSlider.BackgroundTransparency = 0.75
 
-tabSlider.ZIndex = 1
+tabSlider.ZIndex           = 1
 
-tabSlider.Parent = tabRow
+tabSlider.Parent           = tabRow
 
 Instance.new("UICorner", tabSlider).CornerRadius = UDim.new(0, 5)
 
@@ -330,89 +344,89 @@ Instance.new("UICorner", tabSlider).CornerRadius = UDim.new(0, 5)
 
 local tab1 = Instance.new("TextButton")
 
-tab1.Size = UDim2.new(0.5, -4, 1, -4)
+tab1.Size             = UDim2.new(0.5, -4, 1, -4)
 
-tab1.Position = UDim2.new(0, 2, 0, 2)
+tab1.Position         = UDim2.new(0, 2, 0, 2)
 
 tab1.BackgroundTransparency = 1
 
-tab1.Text = "Inf Jump"
+tab1.Text             = "Inf Jump"
 
-tab1.TextColor3 = C.Mode1
+tab1.TextColor3       = C.Mode1
 
-tab1.TextSize = 11
+tab1.TextSize         = 11
 
-tab1.Font = Enum.Font.GothamBold
+tab1.Font             = Enum.Font.GothamBold
 
-tab1.ZIndex = 2
+tab1.ZIndex           = 2
 
-tab1.Parent = tabRow
+tab1.Parent           = tabRow
 
 
 
 local tab2 = Instance.new("TextButton")
 
-tab2.Size = UDim2.new(0.5, -4, 1, -4)
+tab2.Size             = UDim2.new(0.5, -4, 1, -4)
 
-tab2.Position = UDim2.new(0.5, 2, 0, 2)
+tab2.Position         = UDim2.new(0.5, 2, 0, 2)
 
 tab2.BackgroundTransparency = 1
 
-tab2.Text = "Cam Flick"
+tab2.Text             = "Cam Flick"
 
-tab2.TextColor3 = C.TextDim
+tab2.TextColor3       = C.TextDim
 
-tab2.TextSize = 11
+tab2.TextSize         = 11
 
-tab2.Font = Enum.Font.GothamBold
+tab2.Font             = Enum.Font.GothamBold
 
-tab2.ZIndex = 2
+tab2.ZIndex           = 2
 
-tab2.Parent = tabRow
+tab2.Parent           = tabRow
 
 
 
 local keyHint = Instance.new("TextLabel")
 
-keyHint.Size = UDim2.new(1, -12, 0, 12)
+keyHint.Size              = UDim2.new(1, -12, 0, 12)
 
-keyHint.Position = UDim2.new(0, 6, 1, -14)
+keyHint.Position          = UDim2.new(0, 6, 1, -14)
 
 keyHint.BackgroundTransparency = 1
 
-keyHint.Text = "(-) ON/OFF • LCtrl InfJump • RAlt CamFlick"
+keyHint.Text              = "(-) ON/OFF  •  LCtrl InfJump  •  RAlt CamFlick"
 
-keyHint.TextColor3 = C.TextDim
+keyHint.TextColor3        = C.TextDim
 
-keyHint.TextSize = 9
+keyHint.TextSize          = 9
 
-keyHint.Font = Enum.Font.Gotham
+keyHint.Font              = Enum.Font.Gotham
 
-keyHint.Parent = frame
+keyHint.Parent            = frame
 
 
 
 -- =============================================
 
--- SETTINGS PANEL 
+-- SETTINGS PANEL  (expanded for V2.3 rows)
 
 -- =============================================
 
 local settingsFrame = Instance.new("Frame")
 
-settingsFrame.Size = UDim2.new(0, 200, 0, 240)
+settingsFrame.Size             = UDim2.new(0, 210, 0, 340)
 
-settingsFrame.Position = UDim2.new(0.5, -100, 0.5, -120)
+settingsFrame.Position         = UDim2.new(0.5, -105, 0.5, -170)
 
 settingsFrame.BackgroundColor3 = C.BG
 
-settingsFrame.BorderSizePixel = 0
+settingsFrame.BorderSizePixel  = 0
 
-settingsFrame.Visible = false
+settingsFrame.Visible          = false
 
-settingsFrame.ZIndex = 10
+settingsFrame.ZIndex           = 10
 
-settingsFrame.Parent = sg
+settingsFrame.Parent           = sg
 
 Instance.new("UICorner", settingsFrame).CornerRadius = UDim.new(0, 12)
 
@@ -420,7 +434,7 @@ Instance.new("UICorner", settingsFrame).CornerRadius = UDim.new(0, 12)
 
 local settingsStroke = Instance.new("UIStroke", settingsFrame)
 
-settingsStroke.Color = C.Border
+settingsStroke.Color     = C.Border
 
 settingsStroke.Thickness = 1.4
 
@@ -428,83 +442,85 @@ settingsStroke.Thickness = 1.4
 
 local settingsTitle = Instance.new("TextLabel")
 
-settingsTitle.Size = UDim2.new(1, 0, 0, 30)
+settingsTitle.Size              = UDim2.new(1, 0, 0, 30)
 
 settingsTitle.BackgroundTransparency = 1
 
-settingsTitle.Text = "Settings"
+settingsTitle.Text              = "Settings"
 
-settingsTitle.TextColor3 = C.TextMain
+settingsTitle.TextColor3        = C.TextMain
 
-settingsTitle.TextSize = 14
+settingsTitle.TextSize          = 14
 
-settingsTitle.Font = Enum.Font.GothamBold
+settingsTitle.Font              = Enum.Font.GothamBold
 
-settingsTitle.Parent = settingsFrame
+settingsTitle.Parent            = settingsFrame
 
 
 
 local closeBtn = Instance.new("TextButton")
 
-closeBtn.Size = UDim2.new(0, 24, 0, 24)
+closeBtn.Size             = UDim2.new(0, 24, 0, 24)
 
-closeBtn.Position = UDim2.new(1, -28, 0, 3)
+closeBtn.Position         = UDim2.new(1, -28, 0, 3)
 
 closeBtn.BackgroundTransparency = 1
 
-closeBtn.Text = "✕"
+closeBtn.Text             = "✕"
 
-closeBtn.TextColor3 = C.Red
+closeBtn.TextColor3       = C.Red
 
-closeBtn.TextSize = 16
+closeBtn.TextSize         = 16
 
-closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Font             = Enum.Font.GothamBold
 
-closeBtn.Parent = settingsFrame
+closeBtn.Parent           = settingsFrame
 
 
+
+-- Helper: number input row
 
 local function createSetting(name, default, yPos, callback)
 
     local label = Instance.new("TextLabel")
 
-    label.Size = UDim2.new(0.6, 0, 0, 20)
+    label.Size              = UDim2.new(0.6, 0, 0, 20)
 
-    label.Position = UDim2.new(0, 12, 0, yPos)
+    label.Position          = UDim2.new(0, 12, 0, yPos)
 
     label.BackgroundTransparency = 1
 
-    label.Text = name
+    label.Text              = name
 
-    label.TextColor3 = C.TextSub
+    label.TextColor3        = C.TextSub
 
-    label.TextSize = 11
+    label.TextSize          = 11
 
-    label.Font = Enum.Font.Gotham
+    label.Font              = Enum.Font.Gotham
 
-    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextXAlignment    = Enum.TextXAlignment.Left
 
-    label.Parent = settingsFrame
+    label.Parent            = settingsFrame
 
 
 
     local valueBox = Instance.new("TextBox")
 
-    valueBox.Size = UDim2.new(0.35, 0, 0, 20)
+    valueBox.Size             = UDim2.new(0.35, 0, 0, 20)
 
-    valueBox.Position = UDim2.new(0.62, 0, 0, yPos)
+    valueBox.Position         = UDim2.new(0.62, 0, 0, yPos)
 
     valueBox.BackgroundColor3 = C.Surface
 
-    valueBox.Text = tostring(default)
+    valueBox.Text             = tostring(default)
 
-    valueBox.TextColor3 = C.TextMain
+    valueBox.TextColor3       = C.TextMain
 
-    valueBox.TextSize = 11
+    valueBox.TextSize         = 11
 
-    valueBox.Font = Enum.Font.Gotham
+    valueBox.Font             = Enum.Font.Gotham
 
-    valueBox.Parent = settingsFrame
+    valueBox.Parent           = settingsFrame
 
     Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
 
@@ -516,19 +532,347 @@ local function createSetting(name, default, yPos, callback)
 
     end)
 
+
+
+    return valueBox
+
 end
 
 
 
-createSetting("Flick Angle (°)", Settings.FlickAngle, 40, function(val) Settings.FlickAngle = tonumber(val) or 45 end)
+-- Existing settings
 
-createSetting("Mode 2 Cooldown", Settings.Mode2_Cooldown, 65, function(val) Settings.Mode2_Cooldown = tonumber(val) or 0.33 end)
+createSetting("Flick Angle (°)",    Settings.FlickAngle,     40,  function(v) Settings.FlickAngle     = tonumber(v) or 45   end)
 
-createSetting("Max Chain", Settings.MaxChain, 90, function(val) Settings.MaxChain = tonumber(val) or 4 end)
+createSetting("Mode 2 Cooldown",    Settings.Mode2_Cooldown, 65,  function(v) Settings.Mode2_Cooldown = tonumber(v) or 0.33 end)
 
-createSetting("Snap Duration", Settings.SnapDuration, 115, function(val) Settings.SnapDuration = tonumber(val) or 0.05 end)
+createSetting("Max Chain",          Settings.MaxChain,       90,  function(v) Settings.MaxChain       = tonumber(v) or 4    end)
 
-createSetting("Inf Jump Cooldown", Settings.Mode1_Cooldown, 140, function(val) Settings.Mode1_Cooldown = tonumber(val) or 0.15 end)
+createSetting("Snap Duration",      Settings.SnapDuration,   115, function(v) Settings.SnapDuration   = tonumber(v) or 0.05 end)
+
+createSetting("Inf Jump Cooldown",  Settings.Mode1_Cooldown, 140, function(v) Settings.Mode1_Cooldown = tonumber(v) or 0.15 end)
+
+
+
+-- ── Divider ──
+
+local div = Instance.new("Frame")
+
+div.Size             = UDim2.new(1, -16, 0, 1)
+
+div.Position         = UDim2.new(0, 8, 0, 168)
+
+div.BackgroundColor3 = C.Border
+
+div.BackgroundTransparency = 0.4
+
+div.BorderSizePixel  = 0
+
+div.Parent           = settingsFrame
+
+
+
+-- ── Section label ──
+
+local camSection = Instance.new("TextLabel")
+
+camSection.Size              = UDim2.new(1, -16, 0, 16)
+
+camSection.Position          = UDim2.new(0, 12, 0, 172)
+
+camSection.BackgroundTransparency = 1
+
+camSection.Text              = "CAM FLICK OPTIONS"
+
+camSection.TextColor3        = C.Mode2
+
+camSection.TextSize          = 10
+
+camSection.Font              = Enum.Font.GothamBold
+
+camSection.TextXAlignment    = Enum.TextXAlignment.Left
+
+camSection.Parent            = settingsFrame
+
+
+
+-- ── NEW: Flick Direction (cycle button) ──
+
+local flickDirLabel = Instance.new("TextLabel")
+
+flickDirLabel.Size              = UDim2.new(0.55, 0, 0, 22)
+
+flickDirLabel.Position          = UDim2.new(0, 12, 0, 192)
+
+flickDirLabel.BackgroundTransparency = 1
+
+flickDirLabel.Text              = "Flick Direction"
+
+flickDirLabel.TextColor3        = C.TextSub
+
+flickDirLabel.TextSize          = 11
+
+flickDirLabel.Font              = Enum.Font.Gotham
+
+flickDirLabel.TextXAlignment    = Enum.TextXAlignment.Left
+
+flickDirLabel.Parent            = settingsFrame
+
+
+
+local flickDirBtn = Instance.new("TextButton")
+
+flickDirBtn.Size             = UDim2.new(0.38, 0, 0, 22)
+
+flickDirBtn.Position         = UDim2.new(0.60, 0, 0, 192)
+
+flickDirBtn.BackgroundColor3 = C.Surface
+
+flickDirBtn.Text             = Settings.FlickDirection
+
+flickDirBtn.TextColor3       = C.Mode2
+
+flickDirBtn.TextSize         = 11
+
+flickDirBtn.Font             = Enum.Font.GothamBold
+
+flickDirBtn.Parent           = settingsFrame
+
+Instance.new("UICorner", flickDirBtn).CornerRadius = UDim.new(0, 5)
+
+Instance.new("UIStroke", flickDirBtn).Color = C.Border
+
+
+
+local flickDirOptions = {"Random", "Left", "Right"}
+
+local flickDirIndex   = 1  -- starts on "Random"
+
+
+
+flickDirBtn.MouseButton1Click:Connect(function()
+
+    flickDirIndex = flickDirIndex % #flickDirOptions + 1
+
+    Settings.FlickDirection = flickDirOptions[flickDirIndex]
+
+    flickDirBtn.Text = Settings.FlickDirection
+
+end)
+
+
+
+-- ── NEW: Smooth Flick ON/OFF ──
+
+local smoothLabel = Instance.new("TextLabel")
+
+smoothLabel.Size              = UDim2.new(0.55, 0, 0, 22)
+
+smoothLabel.Position          = UDim2.new(0, 12, 0, 222)
+
+smoothLabel.BackgroundTransparency = 1
+
+smoothLabel.Text              = "Smooth Flick"
+
+smoothLabel.TextColor3        = C.TextSub
+
+smoothLabel.TextSize          = 11
+
+smoothLabel.Font              = Enum.Font.Gotham
+
+smoothLabel.TextXAlignment    = Enum.TextXAlignment.Left
+
+smoothLabel.Parent            = settingsFrame
+
+
+
+local smoothToggleBtn = Instance.new("TextButton")
+
+smoothToggleBtn.Size             = UDim2.new(0.38, 0, 0, 22)
+
+smoothToggleBtn.Position         = UDim2.new(0.60, 0, 0, 222)
+
+smoothToggleBtn.BackgroundColor3 = C.Surface
+
+smoothToggleBtn.Text             = "OFF"
+
+smoothToggleBtn.TextColor3       = C.Red
+
+smoothToggleBtn.TextSize         = 11
+
+smoothToggleBtn.Font             = Enum.Font.GothamBold
+
+smoothToggleBtn.Parent           = settingsFrame
+
+Instance.new("UICorner", smoothToggleBtn).CornerRadius = UDim.new(0, 5)
+
+local smoothStroke = Instance.new("UIStroke", smoothToggleBtn)
+
+smoothStroke.Color = C.Border
+
+
+
+smoothToggleBtn.MouseButton1Click:Connect(function()
+
+    Settings.SmoothFlick = not Settings.SmoothFlick
+
+    local on = Settings.SmoothFlick
+
+    TweenService:Create(smoothToggleBtn, TweenInfo.new(0.12), {
+
+        BackgroundColor3 = on and Color3.fromRGB(20, 40, 30) or C.Surface
+
+    }):Play()
+
+    TweenService:Create(smoothStroke, TweenInfo.new(0.12), {
+
+        Color = on and C.Green or C.Border
+
+    }):Play()
+
+    smoothToggleBtn.Text      = on and "ON"  or "OFF"
+
+    smoothToggleBtn.TextColor3 = on and C.Green or C.Red
+
+end)
+
+
+
+-- ── NEW: Smooth Duration textbox ──
+
+local smoothDurLabel = Instance.new("TextLabel")
+
+smoothDurLabel.Size              = UDim2.new(0.55, 0, 0, 22)
+
+smoothDurLabel.Position          = UDim2.new(0, 12, 0, 252)
+
+smoothDurLabel.BackgroundTransparency = 1
+
+smoothDurLabel.Text              = "Smooth Duration"
+
+smoothDurLabel.TextColor3        = C.TextSub
+
+smoothDurLabel.TextSize          = 11
+
+smoothDurLabel.Font              = Enum.Font.Gotham
+
+smoothDurLabel.TextXAlignment    = Enum.TextXAlignment.Left
+
+smoothDurLabel.Parent            = settingsFrame
+
+
+
+local smoothDurBox = Instance.new("TextBox")
+
+smoothDurBox.Size             = UDim2.new(0.38, 0, 0, 22)
+
+smoothDurBox.Position         = UDim2.new(0.60, 0, 0, 252)
+
+smoothDurBox.BackgroundColor3 = C.Surface
+
+smoothDurBox.Text             = string.format("%.2f", Settings.SmoothDuration)
+
+smoothDurBox.TextColor3       = C.TextMain
+
+smoothDurBox.TextSize         = 11
+
+smoothDurBox.Font             = Enum.Font.Gotham
+
+smoothDurBox.Parent           = settingsFrame
+
+Instance.new("UICorner", smoothDurBox).CornerRadius = UDim.new(0, 4)
+
+
+
+smoothDurBox.FocusLost:Connect(function()
+
+    local v = tonumber(smoothDurBox.Text)
+
+    if v then
+
+        Settings.SmoothDuration = math.clamp(v, 0.01, 1.0)
+
+        smoothDurBox.Text = string.format("%.2f", Settings.SmoothDuration)
+
+    else
+
+        smoothDurBox.Text = string.format("%.2f", Settings.SmoothDuration)
+
+    end
+
+end)
+
+
+
+-- Hint under duration box
+
+local smoothHint = Instance.new("TextLabel")
+
+smoothHint.Size              = UDim2.new(1, -16, 0, 14)
+
+smoothHint.Position          = UDim2.new(0, 12, 0, 278)
+
+smoothHint.BackgroundTransparency = 1
+
+smoothHint.Text              = "How long the flick tween lasts (seconds)"
+
+smoothHint.TextColor3        = C.TextDim
+
+smoothHint.TextSize          = 9
+
+smoothHint.Font              = Enum.Font.Gotham
+
+smoothHint.TextXAlignment    = Enum.TextXAlignment.Left
+
+smoothHint.Parent            = settingsFrame
+
+
+
+-- Settings drag
+
+local settingsDragStart = nil
+
+local settingsStartPos  = nil
+
+settingsFrame.InputBegan:Connect(function(input)
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+        settingsDragStart = input.Position
+
+        settingsStartPos  = settingsFrame.Position
+
+    end
+
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+    if not settingsDragStart then return end
+
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+
+    local d = input.Position - settingsDragStart
+
+    settingsFrame.Position = UDim2.new(
+
+        settingsStartPos.X.Scale, settingsStartPos.X.Offset + d.X,
+
+        settingsStartPos.Y.Scale, settingsStartPos.Y.Offset + d.Y
+
+    )
+
+end)
+
+settingsFrame.InputEnded:Connect(function(input)
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+        settingsDragStart = nil
+
+    end
+
+end)
 
 
 
@@ -548,7 +892,7 @@ local function updateTabs()
 
     TweenService:Create(tabSlider, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
 
-        Position = UDim2.new(currentMode == 1 and 0 or 0.5, 2, 0, 2),
+        Position         = UDim2.new(currentMode == 1 and 0 or 0.5, 2, 0, 2),
 
         BackgroundColor3 = color,
 
@@ -568,19 +912,15 @@ local function setEnabled(val)
 
     local color = val and C.Green or C.Red
 
-    local txt = val and "ON" or "OFF"
+    TweenService:Create(statusLbl,   TweenInfo.new(0.15), {TextColor3 = color}):Play()
 
+    TweenService:Create(statusDot,   TweenInfo.new(0.15), {BackgroundColor3 = color}):Play()
 
+    TweenService:Create(accentBar,   TweenInfo.new(0.2),  {BackgroundColor3 = val and modeColors[currentMode] or C.Accent}):Play()
 
-    TweenService:Create(statusLbl, TweenInfo.new(0.15), {TextColor3 = color}):Play()
+    TweenService:Create(outerStroke, TweenInfo.new(0.2),  {Color = val and modeColors[currentMode] or C.Border}):Play()
 
-    TweenService:Create(statusDot, TweenInfo.new(0.15), {BackgroundColor3 = color}):Play()
-
-    TweenService:Create(accentBar, TweenInfo.new(0.2), {BackgroundColor3 = val and modeColors[currentMode] or C.Accent}):Play()
-
-    TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = val and modeColors[currentMode] or C.Border}):Play()
-
-    statusLbl.Text = txt
+    statusLbl.Text = val and "ON" or "OFF"
 
 end
 
@@ -594,9 +934,29 @@ end
 
 
 
+local function switchMode(m)
+
+    currentMode = m
+
+    updateTabs()
+
+    local col = modeColors[m]
+
+    TweenService:Create(accentBar,   TweenInfo.new(0.2), {BackgroundColor3 = enabled and col or C.Accent}):Play()
+
+    TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = enabled and col or C.Border}):Play()
+
+end
+
+
+
 -- =============================================
 
 -- KEYBIND LOGIC
+
+-- All 3 binds checked BEFORE gameProcessed guard
+
+-- so modifier keys (Ctrl, Alt) always fire.
 
 -- =============================================
 
@@ -614,13 +974,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
 
     if input.KeyCode == Enum.KeyCode.LeftControl then
 
-        currentMode = 1
-
-        updateTabs()
-
-        TweenService:Create(accentBar, TweenInfo.new(0.2), {BackgroundColor3 = enabled and C.Mode1 or C.Accent}):Play()
-
-        TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = enabled and C.Mode1 or C.Border}):Play()
+        switchMode(1)
 
         return
 
@@ -630,13 +984,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
 
     if input.KeyCode == Enum.KeyCode.RightAlt then
 
-        currentMode = 2
-
-        updateTabs()
-
-        TweenService:Create(accentBar, TweenInfo.new(0.2), {BackgroundColor3 = enabled and C.Mode2 or C.Accent}):Play()
-
-        TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = enabled and C.Mode2 or C.Border}):Play()
+        switchMode(2)
 
         return
 
@@ -668,41 +1016,23 @@ end)
 
 toggleBtn.MouseButton1Click:Connect(toggleEnabled)
 
-tab1.MouseButton1Click:Connect(function()
 
-    currentMode = 1
 
-    updateTabs()
+tab1.MouseButton1Click:Connect(function() switchMode(1) end)
 
-    TweenService:Create(accentBar,   TweenInfo.new(0.2), {BackgroundColor3 = enabled and C.Mode1 or C.Accent}):Play()
-
-    TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = enabled and C.Mode1 or C.Border}):Play()
-
-end)
-
-tab2.MouseButton1Click:Connect(function()
-
-    currentMode = 2
-
-    updateTabs()
-
-    TweenService:Create(accentBar,   TweenInfo.new(0.2), {BackgroundColor3 = enabled and C.Mode2 or C.Accent}):Play()
-
-    TweenService:Create(outerStroke, TweenInfo.new(0.2), {Color = enabled and C.Mode2 or C.Border}):Play()
-
-end)
+tab2.MouseButton1Click:Connect(function() switchMode(2) end)
 
 
 
 -- =============================================
 
--- DRAG SYSTEM (Fixed)
+-- DRAG SYSTEM
 
 -- =============================================
 
 local DRAG_THRESHOLD = 6
 
-local isDragging = false
+local isDragging   = false
 
 local dragStartPos = nil
 
@@ -710,7 +1040,7 @@ local frameStartPos = nil
 
 
 
-local dragSurfaces = {frame, header, toggleBtn, gearBtn, tabRow, tab1, tab2, tabSlider, pillBG, statusLbl, keyHint, settingsFrame}
+local dragSurfaces = {frame, header, toggleBtn, gearBtn, tabRow, tab1, tab2, tabSlider, pillBG, statusLbl, keyHint}
 
 
 
@@ -718,11 +1048,13 @@ for _, surface in ipairs(dragSurfaces) do
 
     surface.InputBegan:Connect(function(input)
 
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1
 
-            isDragging = false
+        or input.UserInputType == Enum.UserInputType.Touch then
 
-            dragStartPos = input.Position
+            isDragging    = false
+
+            dragStartPos  = input.Position
 
             frameStartPos = frame.Position
 
@@ -738,13 +1070,13 @@ UserInputService.InputChanged:Connect(function(input)
 
     if not dragStartPos then return end
 
-    if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement
+
+    and input.UserInputType ~= Enum.UserInputType.Touch then return end
 
 
 
     local delta = input.Position - dragStartPos
-
-
 
     if not isDragging and (math.abs(delta.X) > DRAG_THRESHOLD or math.abs(delta.Y) > DRAG_THRESHOLD) then
 
@@ -758,13 +1090,9 @@ UserInputService.InputChanged:Connect(function(input)
 
         frame.Position = UDim2.new(
 
-            frameStartPos.X.Scale,
+            frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X,
 
-            frameStartPos.X.Offset + delta.X,
-
-            frameStartPos.Y.Scale,
-
-            frameStartPos.Y.Offset + delta.Y
+            frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y
 
         )
 
@@ -776,11 +1104,13 @@ end)
 
 UserInputService.InputEnded:Connect(function(input)
 
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+
+    or input.UserInputType == Enum.UserInputType.Touch then
 
         dragStartPos = nil
 
-        isDragging = false
+        isDragging   = false
 
     end
 
@@ -804,13 +1134,19 @@ local function hasWall(root)
 
     params.FilterDescendantsInstances = {player.Character or {}}
 
+    local pos  = root.Position + Vector3.new(0, -1.8, 0)
 
+    local dirs = {
 
-    local pos = root.Position + Vector3.new(0, -1.8, 0)
+        root.CFrame.RightVector  *  4,
 
-    local dirs = {root.CFrame.RightVector*4, -root.CFrame.RightVector*4, root.CFrame.LookVector*4, -root.CFrame.LookVector*4}
+        root.CFrame.RightVector  * -4,
 
+        root.CFrame.LookVector   *  4,
 
+        root.CFrame.LookVector   * -4,
+
+    }
 
     for _, dir in ipairs(dirs) do
 
@@ -832,7 +1168,13 @@ local function getContactCount(char, root)
 
     params.FilterDescendantsInstances = {char}
 
-    local parts = Workspace:GetPartBoundsInBox(root.CFrame * CFrame.new(0, -1.6, 0), Vector3.new(3.8, 3.2, 3.8), params)
+    local parts = Workspace:GetPartBoundsInBox(
+
+        root.CFrame * CFrame.new(0, -1.6, 0),
+
+        Vector3.new(3.8, 3.2, 3.8), params
+
+    )
 
     local count = 0
 
@@ -854,9 +1196,9 @@ local function getHorizontalMoveDir()
 
     local left  = UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left)
 
-    if right and not left then return 1 end
+    if right and not left then return  1 end
 
-    if left and not right then return -1 end
+    if left  and not right then return -1 end
 
     return 0
 
@@ -864,7 +1206,165 @@ end
 
 
 
--- Mode 1: Inf Jump
+-- Returns the flick sign based on FlickDirection setting
+
+local function getFlickSign()
+
+    local dir = Settings.FlickDirection
+
+    if dir == "Left"  then return -1 end
+
+    if dir == "Right" then return  1 end
+
+    -- "Random": use movement direction, default right
+
+    local move = getHorizontalMoveDir()
+
+    return move == 0 and 1 or move
+
+end
+
+
+
+-- Smoothstep easer (feels natural, not robotic)
+
+local function smoothstep(t)
+
+    t = math.clamp(t, 0, 1)
+
+    return t * t * (3 - 2 * t)
+
+end
+
+
+
+-- Steps rotation frame-by-frame via Heartbeat so physics can't fight it.
+
+-- AutoRotate is disabled during the flick so the character body actually turns.
+
+local function stepRotation(root, hum, camera, totalRad, dur, onDone)
+
+    local elapsed     = 0
+
+    local rotatedSoFar = 0
+
+    local wasAutoRotate = hum.AutoRotate
+
+    hum.AutoRotate = false   -- hold character facing direction during flick
+
+
+
+    local conn
+
+    conn = RunService.Heartbeat:Connect(function(dt)
+
+        if not root or not root.Parent then
+
+            conn:Disconnect()
+
+            hum.AutoRotate = wasAutoRotate
+
+            return
+
+        end
+
+
+
+        elapsed = elapsed + dt
+
+        local progress  = math.min(elapsed / dur, 1)
+
+        local eased     = smoothstep(progress)
+
+        local target    = totalRad * eased
+
+        local delta     = target - rotatedSoFar
+
+        rotatedSoFar    = target
+
+
+
+        -- Incremental rotate — physics engine sees a tiny step each frame
+
+        root.CFrame   = root.CFrame   * CFrame.Angles(0, delta, 0)
+
+        camera.CFrame = camera.CFrame * CFrame.Angles(0, delta, 0)
+
+
+
+        if progress >= 1 then
+
+            conn:Disconnect()
+
+            hum.AutoRotate = wasAutoRotate
+
+            if onDone then onDone() end
+
+        end
+
+    end)
+
+end
+
+
+
+-- Applies flick either instantly or smoothly, then snaps back
+
+local function applyFlick(root, hum, camera, flickRad)
+
+    if Settings.SmoothFlick then
+
+        local dur = math.max(Settings.SmoothDuration, 0.01)
+
+
+
+        -- Flick forward smoothly
+
+        stepRotation(root, hum, camera, flickRad, dur, function()
+
+            -- Snap back smoothly after a tiny hold
+
+            task.delay(0.04, function()
+
+                if root and root.Parent then
+
+                    stepRotation(root, hum, camera, -flickRad, dur * 0.55, nil)
+
+                end
+
+            end)
+
+        end)
+
+    else
+
+        -- Instant (original behaviour — unchanged)
+
+        root.CFrame   = root.CFrame   * CFrame.Angles(0, flickRad, 0)
+
+        camera.CFrame = camera.CFrame * CFrame.Angles(0, flickRad, 0)
+
+
+
+        task.delay(Settings.SnapDuration, function()
+
+            if root and root.Parent then
+
+                root.CFrame   = root.CFrame   * CFrame.Angles(0, -flickRad, 0)
+
+                camera.CFrame = camera.CFrame * CFrame.Angles(0, -flickRad, 0)
+
+            end
+
+        end)
+
+    end
+
+end
+
+
+
+-- ── Mode 1: Inf Jump ──
 
 UserInputService.JumpRequest:Connect(function()
 
@@ -872,7 +1372,7 @@ UserInputService.JumpRequest:Connect(function()
 
     local char = player.Character
 
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
 
     local root = char and char:FindFirstChild("HumanoidRootPart")
 
@@ -892,13 +1392,13 @@ UserInputService.JumpRequest:Connect(function()
 
     local vel = root.AssemblyLinearVelocity
 
-    root.AssemblyLinearVelocity = Vector3.new(vel.X, 56 + math.random(-4,5), vel.Z)
+    root.AssemblyLinearVelocity = Vector3.new(vel.X, 56 + math.random(-4, 5), vel.Z)
 
 end)
 
 
 
--- Mode 2: Cam Flick
+-- ── Mode 2: Cam Flick ──
 
 RunService.Heartbeat:Connect(function()
 
@@ -906,7 +1406,7 @@ RunService.Heartbeat:Connect(function()
 
     local char = player.Character
 
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
 
     local root = char and char:FindFirstChild("HumanoidRootPart")
 
@@ -914,7 +1414,9 @@ RunService.Heartbeat:Connect(function()
 
 
 
-    if hum:GetState() ~= Enum.HumanoidStateType.Freefall and hum:GetState() ~= Enum.HumanoidStateType.Jumping then
+    if hum:GetState() ~= Enum.HumanoidStateType.Freefall
+
+    and hum:GetState() ~= Enum.HumanoidStateType.Jumping then
 
         mode2_jumpChain = 0
 
@@ -934,29 +1436,15 @@ RunService.Heartbeat:Connect(function()
 
     mode2_lastJumpTime = tick()
 
-    mode2_jumpChain += 1
+    mode2_jumpChain   += 1
 
 
 
-    local dir = getHorizontalMoveDir()
-
-    local sign = dir == 0 and 1 or dir
+    local sign     = getFlickSign()
 
     local flickRad = math.rad(Settings.FlickAngle * sign + math.random(-5, 5))
 
-
-
-    local camera = Workspace.CurrentCamera
-
-    local oldRoot = root.CFrame
-
-    local oldCam = camera.CFrame
-
-
-
-    root.CFrame = oldRoot * CFrame.Angles(0, flickRad, 0)
-
-    camera.CFrame = oldCam * CFrame.Angles(0, flickRad, 0)
+    local camera   = Workspace.CurrentCamera
 
 
 
@@ -966,26 +1454,20 @@ RunService.Heartbeat:Connect(function()
 
 
 
-    task.delay(Settings.SnapDuration, function()
-
-        if root and root.Parent and camera then
-
-            root.CFrame *= CFrame.Angles(0, -flickRad, 0)
-
-            camera.CFrame *= CFrame.Angles(0, -flickRad, 0)
-
-        end
-
-    end)
+    applyFlick(root, hum, camera, flickRad)
 
 end)
 
 
 
--- Init
+-- =============================================
+
+-- INIT
+
+-- =============================================
 
 updateTabs()
 
 setEnabled(false)
 
-print("Wallhop V2.2 loaded | (-) = ON/OFF • LCtrl = Inf Jump • RShift = Cam Flick")
+print("Wallhop V2.3 loaded | (-) ON/OFF • LCtrl InfJump • RAlt CamFlick")
