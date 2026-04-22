@@ -1,6 +1,6 @@
 -- =============================================
 
--- WALLHOP V2.3
+-- WALLHOP V2.4
 
 -- Minus (-) = ON/OFF
 
@@ -53,6 +53,14 @@ local Settings = {
     SmoothFlick     = false,
 
     SmoothDuration  = 0.08,       -- seconds the flick tween lasts
+
+    -- New V2.4
+
+    JumpVelocity    = 56,         -- base upward velocity for inf jump
+
+    JumpVariance    = 4,          -- ± random variance on jump velocity
+
+    PlayerDetection = true,       -- ignore player body parts as walls
 
 }
 
@@ -212,7 +220,7 @@ titleLbl.Position          = UDim2.new(0, 46, 0, 0)
 
 titleLbl.BackgroundTransparency = 1
 
-titleLbl.Text              = "Wallhop V2.3"
+titleLbl.Text              = "Wallhop V2.4"
 
 titleLbl.TextColor3        = C.TextMain
 
@@ -414,9 +422,9 @@ keyHint.Parent            = frame
 
 local settingsFrame = Instance.new("Frame")
 
-settingsFrame.Size             = UDim2.new(0, 210, 0, 340)
+settingsFrame.Size             = UDim2.new(0, 210, 0, 460)
 
-settingsFrame.Position         = UDim2.new(0.5, -105, 0.5, -170)
+settingsFrame.Position         = UDim2.new(0.5, -105, 0.5, -230)
 
 settingsFrame.BackgroundColor3 = C.BG
 
@@ -540,45 +548,75 @@ end
 
 
 
--- Existing settings
+-- =============================================
 
-createSetting("Flick Angle (°)",    Settings.FlickAngle,     40,  function(v) Settings.FlickAngle     = tonumber(v) or 45   end)
+-- SECTION: INF JUMP SETTINGS  (y=35)
 
-createSetting("Mode 2 Cooldown",    Settings.Mode2_Cooldown, 65,  function(v) Settings.Mode2_Cooldown = tonumber(v) or 0.33 end)
+-- =============================================
 
-createSetting("Max Chain",          Settings.MaxChain,       90,  function(v) Settings.MaxChain       = tonumber(v) or 4    end)
+local infSection = Instance.new("TextLabel")
 
-createSetting("Snap Duration",      Settings.SnapDuration,   115, function(v) Settings.SnapDuration   = tonumber(v) or 0.05 end)
+infSection.Size              = UDim2.new(1, -16, 0, 16)
 
-createSetting("Inf Jump Cooldown",  Settings.Mode1_Cooldown, 140, function(v) Settings.Mode1_Cooldown = tonumber(v) or 0.15 end)
+infSection.Position          = UDim2.new(0, 12, 0, 35)
 
+infSection.BackgroundTransparency = 1
 
+infSection.Text              = "INF JUMP SETTINGS"
 
--- ── Divider ──
+infSection.TextColor3        = C.Mode1
 
-local div = Instance.new("Frame")
+infSection.TextSize          = 10
 
-div.Size             = UDim2.new(1, -16, 0, 1)
+infSection.Font              = Enum.Font.GothamBold
 
-div.Position         = UDim2.new(0, 8, 0, 168)
+infSection.TextXAlignment    = Enum.TextXAlignment.Left
 
-div.BackgroundColor3 = C.Border
-
-div.BackgroundTransparency = 0.4
-
-div.BorderSizePixel  = 0
-
-div.Parent           = settingsFrame
+infSection.Parent            = settingsFrame
 
 
 
--- ── Section label ──
+createSetting("Inf Jump Cooldown", Settings.Mode1_Cooldown, 55,
+
+    function(v) Settings.Mode1_Cooldown = tonumber(v) or 0.15 end)
+
+createSetting("Jump Velocity",     Settings.JumpVelocity,   80,
+
+    function(v) Settings.JumpVelocity  = tonumber(v) or 56   end)
+
+createSetting("Jump Variance",     Settings.JumpVariance,   105,
+
+    function(v) Settings.JumpVariance  = math.max(0, tonumber(v) or 4) end)
+
+
+
+-- =============================================
+
+-- SECTION: CAM FLICK OPTIONS  (y=138)
+
+-- =============================================
+
+local divCam = Instance.new("Frame")
+
+divCam.Size             = UDim2.new(1, -16, 0, 1)
+
+divCam.Position         = UDim2.new(0, 8, 0, 135)
+
+divCam.BackgroundColor3 = C.Border
+
+divCam.BackgroundTransparency = 0.4
+
+divCam.BorderSizePixel  = 0
+
+divCam.Parent           = settingsFrame
+
+
 
 local camSection = Instance.new("TextLabel")
 
 camSection.Size              = UDim2.new(1, -16, 0, 16)
 
-camSection.Position          = UDim2.new(0, 12, 0, 172)
+camSection.Position          = UDim2.new(0, 12, 0, 140)
 
 camSection.BackgroundTransparency = 1
 
@@ -596,13 +634,19 @@ camSection.Parent            = settingsFrame
 
 
 
--- ── NEW: Flick Direction (cycle button) ──
+createSetting("Mode 2 Cooldown", Settings.Mode2_Cooldown, 160,
+
+    function(v) Settings.Mode2_Cooldown = tonumber(v) or 0.33 end)
+
+
+
+-- Flick Direction
 
 local flickDirLabel = Instance.new("TextLabel")
 
 flickDirLabel.Size              = UDim2.new(0.55, 0, 0, 22)
 
-flickDirLabel.Position          = UDim2.new(0, 12, 0, 192)
+flickDirLabel.Position          = UDim2.new(0, 12, 0, 185)
 
 flickDirLabel.BackgroundTransparency = 1
 
@@ -624,7 +668,7 @@ local flickDirBtn = Instance.new("TextButton")
 
 flickDirBtn.Size             = UDim2.new(0.38, 0, 0, 22)
 
-flickDirBtn.Position         = UDim2.new(0.60, 0, 0, 192)
+flickDirBtn.Position         = UDim2.new(0.60, 0, 0, 185)
 
 flickDirBtn.BackgroundColor3 = C.Surface
 
@@ -646,9 +690,7 @@ Instance.new("UIStroke", flickDirBtn).Color = C.Border
 
 local flickDirOptions = {"Random", "Left", "Right"}
 
-local flickDirIndex   = 1  -- starts on "Random"
-
-
+local flickDirIndex   = 1
 
 flickDirBtn.MouseButton1Click:Connect(function()
 
@@ -662,13 +704,13 @@ end)
 
 
 
--- ── NEW: Smooth Flick ON/OFF ──
+-- Smooth Flick ON/OFF
 
 local smoothLabel = Instance.new("TextLabel")
 
 smoothLabel.Size              = UDim2.new(0.55, 0, 0, 22)
 
-smoothLabel.Position          = UDim2.new(0, 12, 0, 222)
+smoothLabel.Position          = UDim2.new(0, 12, 0, 212)
 
 smoothLabel.BackgroundTransparency = 1
 
@@ -690,7 +732,7 @@ local smoothToggleBtn = Instance.new("TextButton")
 
 smoothToggleBtn.Size             = UDim2.new(0.38, 0, 0, 22)
 
-smoothToggleBtn.Position         = UDim2.new(0.60, 0, 0, 222)
+smoothToggleBtn.Position         = UDim2.new(0.60, 0, 0, 212)
 
 smoothToggleBtn.BackgroundColor3 = C.Surface
 
@@ -730,7 +772,7 @@ smoothToggleBtn.MouseButton1Click:Connect(function()
 
     }):Play()
 
-    smoothToggleBtn.Text      = on and "ON"  or "OFF"
+    smoothToggleBtn.Text       = on and "ON" or "OFF"
 
     smoothToggleBtn.TextColor3 = on and C.Green or C.Red
 
@@ -738,13 +780,13 @@ end)
 
 
 
--- ── NEW: Smooth Duration textbox ──
+-- Smooth Duration
 
 local smoothDurLabel = Instance.new("TextLabel")
 
 smoothDurLabel.Size              = UDim2.new(0.55, 0, 0, 22)
 
-smoothDurLabel.Position          = UDim2.new(0, 12, 0, 252)
+smoothDurLabel.Position          = UDim2.new(0, 12, 0, 239)
 
 smoothDurLabel.BackgroundTransparency = 1
 
@@ -766,7 +808,7 @@ local smoothDurBox = Instance.new("TextBox")
 
 smoothDurBox.Size             = UDim2.new(0.38, 0, 0, 22)
 
-smoothDurBox.Position         = UDim2.new(0.60, 0, 0, 252)
+smoothDurBox.Position         = UDim2.new(0.60, 0, 0, 239)
 
 smoothDurBox.BackgroundColor3 = C.Surface
 
@@ -781,8 +823,6 @@ smoothDurBox.Font             = Enum.Font.Gotham
 smoothDurBox.Parent           = settingsFrame
 
 Instance.new("UICorner", smoothDurBox).CornerRadius = UDim.new(0, 4)
-
-
 
 smoothDurBox.FocusLost:Connect(function()
 
@@ -804,13 +844,11 @@ end)
 
 
 
--- Hint under duration box
-
 local smoothHint = Instance.new("TextLabel")
 
 smoothHint.Size              = UDim2.new(1, -16, 0, 14)
 
-smoothHint.Position          = UDim2.new(0, 12, 0, 278)
+smoothHint.Position          = UDim2.new(0, 12, 0, 264)
 
 smoothHint.BackgroundTransparency = 1
 
@@ -825,6 +863,162 @@ smoothHint.Font              = Enum.Font.Gotham
 smoothHint.TextXAlignment    = Enum.TextXAlignment.Left
 
 smoothHint.Parent            = settingsFrame
+
+
+
+-- =============================================
+
+-- SECTION: OTHERS  (y=287)
+
+-- =============================================
+
+local divOthers = Instance.new("Frame")
+
+divOthers.Size             = UDim2.new(1, -16, 0, 1)
+
+divOthers.Position         = UDim2.new(0, 8, 0, 285)
+
+divOthers.BackgroundColor3 = C.Border
+
+divOthers.BackgroundTransparency = 0.4
+
+divOthers.BorderSizePixel  = 0
+
+divOthers.Parent           = settingsFrame
+
+
+
+local othersSection = Instance.new("TextLabel")
+
+othersSection.Size              = UDim2.new(1, -16, 0, 16)
+
+othersSection.Position          = UDim2.new(0, 12, 0, 290)
+
+othersSection.BackgroundTransparency = 1
+
+othersSection.Text              = "OTHERS"
+
+othersSection.TextColor3        = C.Accent
+
+othersSection.TextSize          = 10
+
+othersSection.Font              = Enum.Font.GothamBold
+
+othersSection.TextXAlignment    = Enum.TextXAlignment.Left
+
+othersSection.Parent            = settingsFrame
+
+
+
+createSetting("Flick Angle (°)", Settings.FlickAngle,   310,
+
+    function(v) Settings.FlickAngle    = tonumber(v) or 45   end)
+
+createSetting("Max Chain",       Settings.MaxChain,      335,
+
+    function(v) Settings.MaxChain      = tonumber(v) or 4    end)
+
+createSetting("Snap Duration",   Settings.SnapDuration,  360,
+
+    function(v) Settings.SnapDuration  = tonumber(v) or 0.05 end)
+
+
+
+-- Player Detection
+
+local pdLabel = Instance.new("TextLabel")
+
+pdLabel.Size              = UDim2.new(0.58, 0, 0, 22)
+
+pdLabel.Position          = UDim2.new(0, 12, 0, 388)
+
+pdLabel.BackgroundTransparency = 1
+
+pdLabel.Text              = "Player Detection"
+
+pdLabel.TextColor3        = C.TextSub
+
+pdLabel.TextSize          = 11
+
+pdLabel.Font              = Enum.Font.Gotham
+
+pdLabel.TextXAlignment    = Enum.TextXAlignment.Left
+
+pdLabel.Parent            = settingsFrame
+
+
+
+local pdBtn = Instance.new("TextButton")
+
+pdBtn.Size             = UDim2.new(0.36, 0, 0, 22)
+
+pdBtn.Position         = UDim2.new(0.62, 0, 0, 388)
+
+pdBtn.BackgroundColor3 = Color3.fromRGB(20, 40, 30)
+
+pdBtn.Text             = "ON"
+
+pdBtn.TextColor3       = C.Green
+
+pdBtn.TextSize         = 11
+
+pdBtn.Font             = Enum.Font.GothamBold
+
+pdBtn.Parent           = settingsFrame
+
+Instance.new("UICorner", pdBtn).CornerRadius = UDim.new(0, 5)
+
+local pdStroke = Instance.new("UIStroke", pdBtn)
+
+pdStroke.Color = C.Green
+
+
+
+pdBtn.MouseButton1Click:Connect(function()
+
+    Settings.PlayerDetection = not Settings.PlayerDetection
+
+    local on = Settings.PlayerDetection
+
+    TweenService:Create(pdBtn,    TweenInfo.new(0.12), {
+
+        BackgroundColor3 = on and Color3.fromRGB(20, 40, 30) or C.Surface
+
+    }):Play()
+
+    TweenService:Create(pdStroke, TweenInfo.new(0.12), {
+
+        Color = on and C.Green or C.Border
+
+    }):Play()
+
+    pdBtn.Text       = on and "ON" or "OFF"
+
+    pdBtn.TextColor3 = on and C.Green or C.Red
+
+end)
+
+
+
+local pdHint = Instance.new("TextLabel")
+
+pdHint.Size              = UDim2.new(1, -16, 0, 22)
+
+pdHint.Position          = UDim2.new(0, 12, 0, 414)
+
+pdHint.BackgroundTransparency = 1
+
+pdHint.Text              = "Skip non-collidable player parts as walls"
+
+pdHint.TextColor3        = C.TextDim
+
+pdHint.TextSize          = 9
+
+pdHint.Font              = Enum.Font.Gotham
+
+pdHint.TextXAlignment    = Enum.TextXAlignment.Left
+
+pdHint.Parent            = settingsFrame
 
 
 
@@ -1150,7 +1344,45 @@ local function hasWall(root)
 
     for _, dir in ipairs(dirs) do
 
-        if Workspace:Raycast(pos, dir, params) then return true end
+        local hit = Workspace:Raycast(pos, dir, params)
+
+        if hit then
+
+            -- Player Detection: if ON, skip parts that belong to another
+
+            -- player's character AND have CanCollide disabled (ghost walls).
+
+            if Settings.PlayerDetection then
+
+                local hitPart = hit.Instance
+
+                local isPlayerPart = false
+
+                for _, otherPlayer in ipairs(Players:GetPlayers()) do
+
+                    if otherPlayer ~= player and otherPlayer.Character
+
+                    and hitPart:IsDescendantOf(otherPlayer.Character)
+
+                    and not hitPart.CanCollide then
+
+                        isPlayerPart = true
+
+                        break
+
+                    end
+
+                end
+
+                if not isPlayerPart then return true end
+
+            else
+
+                return true
+
+            end
+
+        end
 
     end
 
@@ -1392,7 +1624,9 @@ UserInputService.JumpRequest:Connect(function()
 
     local vel = root.AssemblyLinearVelocity
 
-    root.AssemblyLinearVelocity = Vector3.new(vel.X, 56 + math.random(-4, 5), vel.Z)
+    root.AssemblyLinearVelocity = Vector3.new(vel.X,
+        Settings.JumpVelocity + math.random(-Settings.JumpVariance, Settings.JumpVariance),
+        vel.Z)
 
 end)
 
@@ -1470,4 +1704,4 @@ updateTabs()
 
 setEnabled(false)
 
-print("Wallhop V2.3 loaded | (-) ON/OFF • LCtrl InfJump • RAlt CamFlick")
+print("Wallhop V2.4 loaded | (-) ON/OFF • LCtrl InfJump • RAlt CamFlick")
